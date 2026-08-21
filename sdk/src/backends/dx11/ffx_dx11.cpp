@@ -183,7 +183,7 @@ FfxResource ffxGetResourceDX11(ID3D11Resource* dx11Resource,
     FfxResourceStates                          state /*=FFX_RESOURCE_STATE_COMPUTE_READ*/)
 {
     FfxResource resource = {};
-    resource.resource    = reinterpret_cast<void*>(const_cast<ID3D11Resource*>(dx11Resource));
+    resource.resource    = reinterpret_cast<void*>(dx11Resource);
     resource.state = state;
     resource.description = ffxResDescription;
 
