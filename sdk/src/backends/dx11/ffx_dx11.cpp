@@ -722,11 +722,9 @@ FfxErrorCode CreateBackendContextDX11(FfxInterface* backendInterface, FfxUInt32*
         TIF(dx11Device->CreateBuffer(&constDesc, nullptr, &backendContext->constantBufferResource[0]));
         SetNameDX11(backendContext->constantBufferResource[0], L"FFX_DX11_DynamicRingBuffer");
 
-        // map it
-        D3D11_MAPPED_SUBRESOURCE mappedSubresource = {};
-        TIF(backendContext->deviceContext->Map(backendContext->constantBufferResource[0], 0,
-            D3D11_MAP_WRITE_NO_OVERWRITE, 0, &mappedSubresource));
-        backendContext->constantBufferMem[0] = mappedSubresource.pData;
+        // D3D11 has no persistent mapping: a buffer must not stay mapped while a Dispatch uses it.
+        // ExecuteGpuJobCompute maps it per upload (DISCARD at offset 0, NO_OVERWRITE after) and unmaps before binding.
+        backendContext->constantBufferMem[0] = nullptr;
         backendContext->constantBufferOffset[0] = 0;
     }
 
@@ -832,7 +830,6 @@ FfxErrorCode DestroyBackendContextDX11(FfxInterface* backendInterface, FfxUInt32
         for (size_t i = 0; i < FFX_MAX_NUM_CONST_BUFFERS; ++i) {
 
             if (backendContext->constantBufferResource[i] != NULL) {
-                backendContext->deviceContext->Unmap(backendContext->constantBufferResource[i], 0);
                 backendContext->constantBufferResource[i]->Release();
                 backendContext->constantBufferResource[i] = NULL;
                 backendContext->constantBufferMem[i] = nullptr;
@@ -1814,8 +1811,15 @@ static FfxErrorCode executeGpuJobCompute(BackendContext_DX11* backendContext, Ff
             if (backendContext->constantBufferOffset[0] + size >= backendContext->constantBufferSize[0])
                 backendContext->constantBufferOffset[0] = 0;
 
-            void* pBuffer = (void*)((uint8_t*)(backendContext->constantBufferMem[0]) + backendContext->constantBufferOffset[0]);
-            memcpy(pBuffer, job->computeJobDescriptor.cbs[currentRootConstantIndex].data, job->computeJobDescriptor.cbs[currentRootConstantIndex].num32BitEntries * sizeof(uint32_t));
+            // DISCARD when (re)starting the ring: the GPU may still read the old contents
+            const D3D11_MAP mapType = backendContext->constantBufferOffset[0] == 0 ? D3D11_MAP_WRITE_DISCARD : D3D11_MAP_WRITE_NO_OVERWRITE;
+            D3D11_MAPPED_SUBRESOURCE mappedSubresource = {};
+            TIF(backendContext->deviceContext->Map(backendContext->constantBufferResource[0], 0, mapType, 0, &mappedSubresource));
+            if (mappedSubresource.pData) {
+                void* pBuffer = (void*)((uint8_t*)(mappedSubresource.pData) + backendContext->constantBufferOffset[0]);
+                memcpy(pBuffer, job->computeJobDescriptor.cbs[currentRootConstantIndex].data, job->computeJobDescriptor.cbs[currentRootConstantIndex].num32BitEntries * sizeof(uint32_t));
+                backendContext->deviceContext->Unmap(backendContext->constantBufferResource[0], 0);
+            }
 
             uint32_t first = backendContext->constantBufferOffset[0] / sizeof(FfxFloat32x4);
             uint32_t num = size / sizeof(FfxFloat32x4);
