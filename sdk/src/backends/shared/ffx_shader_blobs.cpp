@@ -98,10 +98,13 @@ FfxErrorCode ffxGetPermutationBlobByIndex(
     #if defined(FFX_FSR3)
         case FFX_EFFECT_FSR3UPSCALER:
             return fsr3UpscalerGetPermutationBlobByIndex((FfxFsr3UpscalerPass)passId, permutationOptions, outBlob);
+    // OGSR: FFX_NO_FRAMEGEN_BLOBS builds the upscalers without the frame generation shaders (frame interpolation, optical flow)
+    #if !defined(FFX_NO_FRAMEGEN_BLOBS)
         case FFX_EFFECT_FRAMEINTERPOLATION:
             return frameInterpolationGetPermutationBlobByIndex((FfxFrameInterpolationPass)passId, stageId, permutationOptions, outBlob);
         case FFX_EFFECT_OPTICALFLOW:
             return opticalflowGetPermutationBlobByIndex((FfxOpticalflowPass)passId, permutationOptions, outBlob);
+    #endif
     #endif
 #endif // #if defined(FFX_FSR) || defined(FFX_ALL)
 

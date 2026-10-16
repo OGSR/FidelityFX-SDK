@@ -474,10 +474,14 @@ static FfxErrorCode createPipelineStates(FfxFsr3UpscalerContext_Private* context
         getPipelinePermutationFlags(contextFlags, FFX_FSR3UPSCALER_PASS_ACCUMULATE_SHARPEN, supportedFP16, canForceWave64, useLut),
         &pipelineDescription, context->effectContextId, &context->pipelineAccumulateSharpen));
 
+    // OGSR: the shading change pyramid pass binds the SPD constants at b1 (FFX_FSR3UPSCALER_EMBED_CB2_ROOTSIG_CONTENT, as the luma pyramid):
+    // with one root constant buffer the DX12 backend's root signature lacks b1 and CreateComputePipelineState fails (the DX11 backend binds by reflection)
+    pipelineDescription.rootConstantBufferCount = 2;
     wcscpy_s(pipelineDescription.name, L"FSR3-SHADING-CHANGE-PYRAMID");
     FFX_VALIDATE(context->contextDescription.backendInterface.fpCreatePipeline(&context->contextDescription.backendInterface, FFX_EFFECT_FSR3UPSCALER, FFX_FSR3UPSCALER_PASS_SHADING_CHANGE_PYRAMID,
         getPipelinePermutationFlags(contextFlags, FFX_FSR3UPSCALER_PASS_SHADING_CHANGE_PYRAMID, supportedFP16, canForceWave64, useLut),
         &pipelineDescription, context->effectContextId, &context->pipelineShadingChangePyramid));
+    pipelineDescription.rootConstantBufferCount = 1;
 
     wcscpy_s(pipelineDescription.name, L"FSR3-LUMA-INSTABILITY");
     FFX_VALIDATE(context->contextDescription.backendInterface.fpCreatePipeline(&context->contextDescription.backendInterface, FFX_EFFECT_FSR3UPSCALER, FFX_FSR3UPSCALER_PASS_LUMA_INSTABILITY,
