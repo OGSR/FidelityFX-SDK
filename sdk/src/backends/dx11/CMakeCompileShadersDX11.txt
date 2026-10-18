@@ -1,0 +1,72 @@
+# This file is part of the FidelityFX SDK.
+#
+# Copyright (C) 2024 Advanced Micro Devices, Inc.
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files(the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and /or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions :
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+
+# DX11 counterpart of gpu/CMakeCompileShaders.txt (OGSR): FXC, SM 5.0. The four header names of the DX12 rules (wave32, wave64, 16bit,
+# wave64_16bit) are all produced, every one with cs_5_0, so the shared blob accessors compile unchanged; there is no wave64 on SM 5.0 and
+# FFX_HALF=1 gives min16float.
+
+function(compile_shaders_dx11
+	EXECUTABLE BASE_ARGS API_BASE_ARGS
+	PERMUTATION_ARGS INCLUDES_ARGS
+	SHADER_FILES OUTPUT_PATH
+	PERMUTATION_OUTPUTS)
+
+	set(COMPILE_INCLUDE_ARGS )
+	foreach(INC ${INCLUDES_ARGS})
+		list(APPEND COMPILE_INCLUDE_ARGS "-I" "${INC}")
+	endforeach(INC)
+
+	set(DX11_ARGS -compiler=fxc -T cs_5_0 -DFFX_HLSL_SM=50)
+
+	foreach(PASS_SHADER ${SHADER_FILES})
+		get_filename_component(PASS_SHADER_FILENAME ${PASS_SHADER} NAME_WE)
+		get_filename_component(PASS_SHADER_TARGET ${PASS_SHADER} NAME_WLE)
+
+		set(SC_ARGS ${BASE_ARGS} ${API_BASE_ARGS} ${PERMUTATION_ARGS})
+
+		foreach(VARIANT "" "_wave64" "_16bit" "_wave64_16bit")
+			set(PERMUTATION_HEADER ${OUTPUT_PATH}/${PASS_SHADER_TARGET}${VARIANT}_permutations.h)
+			if (VARIANT MATCHES "16bit")
+				set(HALF_ARG -DFFX_HALF=1)
+			else()
+				set(HALF_ARG -DFFX_HALF=0)
+			endif()
+			add_custom_command(
+				OUTPUT ${PERMUTATION_HEADER}
+				COMMAND ${EXECUTABLE} ${SC_ARGS} -name=${PASS_SHADER_FILENAME}${VARIANT} ${HALF_ARG} ${DX11_ARGS} ${COMPILE_INCLUDE_ARGS} -output=${OUTPUT_PATH} ${PASS_SHADER}
+				WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+				DEPENDS ${PASS_SHADER}
+				DEPFILE ${PERMUTATION_HEADER}.d
+			)
+			list(APPEND PERMUTATION_OUTPUTS ${PERMUTATION_HEADER})
+		endforeach()
+	endforeach(PASS_SHADER)
+
+	set(${PERMUTATION_OUTPUTS} ${PERMUTATION_OUTPUTS} PARENT_SCOPE)
+endfunction()
+
+macro (add_shader_output)
+	foreach (_SHADER_SRC ${ARGN})
+		list (APPEND FFX_SC_PERMUTATION_OUTPUTS "${_SHADER_SRC}")
+	endforeach()
+	set (FFX_SC_PERMUTATION_OUTPUTS ${FFX_SC_PERMUTATION_OUTPUTS} PARENT_SCOPE)
+endmacro()
