@@ -143,7 +143,7 @@ struct PreviousLumaBilinearSamplesData
 
 PreviousLumaBilinearSamplesData GetPreviousLumaBilinearSamples(FfxFloat32x2 fUv, FfxFloat32x2 fMotionVector)
 {
-    PreviousLumaBilinearSamplesData data;
+    PreviousLumaBilinearSamplesData data = (PreviousLumaBilinearSamplesData)0;
 
     const FfxFloat32x2 fUvJittered = fUv + PreviousFrameJitter() / PreviousFrameRenderSize();
     const FfxFloat32x2 fReprojectedUv = fUvJittered + fMotionVector;
