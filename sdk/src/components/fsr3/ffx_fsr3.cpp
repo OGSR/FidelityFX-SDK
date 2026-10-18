@@ -67,7 +67,10 @@ FfxErrorCode ffxFsr3ContextCreate(FfxFsr3Context* context, FfxFsr3ContextDescrip
 
     bool upscalingOnly                      = (contextDescription->flags & FFX_FSR3_ENABLE_UPSCALING_ONLY) != 0;
     bool interpolationOnly                  = (contextDescription->flags & FFX_FSR3_ENABLE_INTERPOLATION_ONLY) != 0;
-    contextPrivate->asyncWorkloadSupported  = (contextDescription->flags & FFX_FSR3_ENABLE_ASYNC_WORKLOAD_SUPPORT) != 0;
+    // OGSR: stored, the checks below read them from the context (left 0 by the memset above: interpolation-only made the upscaler's resources)
+    contextPrivate->upscalingOnly           = upscalingOnly;
+    contextPrivate->interpolationOnly       = interpolationOnly;
+    contextPrivate->asyncWorkloadSupported  =(contextDescription->flags & FFX_FSR3_ENABLE_ASYNC_WORKLOAD_SUPPORT) != 0;
     contextPrivate->sharedResourceCount     = contextPrivate->asyncWorkloadSupported ? FSR3_MAX_QUEUED_FRAMES : 1;
 
     // ensure upscalingOnly and interpolationOnly are not set simultaneously
@@ -193,11 +196,22 @@ FfxErrorCode ffxFsr3ContextCreate(FfxFsr3Context* context, FfxFsr3ContextDescrip
             &contextDescription->backendInterfaceSharedResources, &ofResourceDescs.opticalFlowSCD, contextPrivate->effectContextIdSharedResources, &contextPrivate->sharedResources[FFX_FSR3_RESOURCE_IDENTIFIER_OPTICAL_FLOW_SCD_OUTPUT]));
     }
 
-    // set up FSR3Upscaler resources
-    if (!contextPrivate->interpolationOnly)
+    // set up FSR3Upscaler resources (the dilated depth / motion vectors and the previous depth the frame generation prepare writes and the
+    // frame generation reads). OGSR: interpolation only has no upscaler: the same descriptions from frame interpolation
     {
         FfxFsr3UpscalerSharedResourceDescriptions fs3UpscalerResourceDescs = {};
-        FFX_VALIDATE(ffxFsr3UpscalerGetSharedResourceDescriptions(&contextPrivate->upscalerContext, &fs3UpscalerResourceDescs));
+        if (contextPrivate->interpolationOnly)
+        {
+            FfxFrameInterpolationSharedResourceDescriptions fiResourceDescs = {};
+            FFX_VALIDATE(ffxFrameInterpolationGetSharedResourceDescriptions(&contextPrivate->fiContext, &fiResourceDescs));
+            fs3UpscalerResourceDescs.dilatedDepth                  = fiResourceDescs.dilatedDepth;
+            fs3UpscalerResourceDescs.dilatedMotionVectors          = fiResourceDescs.dilatedMotionVectors;
+            fs3UpscalerResourceDescs.reconstructedPrevNearestDepth = fiResourceDescs.reconstructedPrevNearestDepth;
+        }
+        else
+        {
+            FFX_VALIDATE(ffxFsr3UpscalerGetSharedResourceDescriptions(&contextPrivate->upscalerContext, &fs3UpscalerResourceDescs));
+        }
 
         wchar_t Name[256] = {};
         for (FfxUInt32 i = 0; i < contextPrivate->sharedResourceCount; i++)
