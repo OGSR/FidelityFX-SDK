@@ -20,6 +20,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+// ffx_opticalflow_compute_optical_flow_v5.h uses the wave intrinsics (ffxWaveLaneCount, ffxWaveIsFirstLane): without this the pass does not
+// compile, and FidelityFX_SC hangs on the error instead of reporting it
+#define FFX_WAVE 1
 
 #define FFX_OPTICALFLOW_BIND_SRV_OPTICAL_FLOW_INPUT                0
 #define FFX_OPTICALFLOW_BIND_SRV_OPTICAL_FLOW_PREVIOUS_INPUT       1

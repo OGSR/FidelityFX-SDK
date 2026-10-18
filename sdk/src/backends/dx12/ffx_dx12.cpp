@@ -1154,7 +1154,9 @@ FfxErrorCode CreateResourceDX12(
 
                     effectContext.nextStaticUavDescriptor++;
                 }
-                else
+
+                // SRV always: a UAV buffer is read as an SRV too (frame interpolation's counters, rw_counters / r_counters); without it the
+                // pass reads an uninitialized descriptor (GPU-based validation 938)
                 {
                     dx12SrvDescription.Buffer.FirstElement         = 0;
                     dx12SrvDescription.Buffer.StructureByteStride  = backendResource->resourceDescription.stride;
