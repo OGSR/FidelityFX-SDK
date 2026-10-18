@@ -78,9 +78,9 @@ else()
 	add_custom_target(${FFX_SC_DEPENDENT_TARGET})
 endif()
 
+# no WIN32_LEAN_AND_MEAN (unlike DX12): ffx_dx11.cpp uses MAKEFOURCC from mmsystem.h
 target_compile_definitions(ffx_backend_dx11_${FFX_PLATFORM_NAME} PRIVATE
-	NOMINMAX
-	WIN32_LEAN_AND_MEAN)
+	NOMINMAX)
 
 if (FFX_FSR3UPSCALER OR FFX_ALL)
 	target_compile_definitions(ffx_backend_dx11_${FFX_PLATFORM_NAME} PRIVATE FFX_FSR3UPSCALER)
