@@ -113,7 +113,7 @@ void InitPassData(FfxInt32x2 iPxHrPos, FFX_PARAMETER_INOUT AccumulationPassCommo
     params.fMotionVector                = GetMotionVector(iPxHrPos, fHrUv);
     params.f4KVelocity                  = Get4KVelocity(params.fMotionVector);
 
-    ComputeReprojectedUVs(params);
+    ComputeReprojectedUVs(params, params.fReprojectedHrUv, params.bIsExistingSample);
 
     const FfxFloat32x2 fLumaInstabilityUv_HW  = ClampUv(fHrUv, RenderSize(), MaxRenderSize());
     params.fLumaInstabilityFactor       = SampleLumaInstability(fLumaInstabilityUv_HW);
@@ -130,6 +130,11 @@ void InitPassData(FfxInt32x2 iPxHrPos, FFX_PARAMETER_INOUT AccumulationPassCommo
     params.fAccumulation *= FfxFloat32(round(params.fAccumulation * 100.0f) > 1.0f);
 
     // Init variable data
+    data.clippingBox.boxCenter          = FfxFloat32x3(0.0f, 0.0f, 0.0f);
+    data.clippingBox.boxVec             = FfxFloat32x3(0.0f, 0.0f, 0.0f);
+    data.clippingBox.aabbMin            = FfxFloat32x3(0.0f, 0.0f, 0.0f);
+    data.clippingBox.aabbMax            = FfxFloat32x3(0.0f, 0.0f, 0.0f);
+    data.clippingBox.fBoxCenterWeight   = 0.0f;
     data.fUpsampledColor                = FfxFloat32x3(0.0f, 0.0f, 0.0f);
     data.fHistoryColor                  = FfxFloat32x3(0.0f, 0.0f, 0.0f);
     data.fHistoryWeight                 = 1.0f;
